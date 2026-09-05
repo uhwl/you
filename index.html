@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سيرفر ماينكرافت</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #121212; color: #fff; text-align: center; padding: 40px 20px; }
+        .card { background: #1e1e1e; max-width: 380px; margin: 0 auto; padding: 25px; border-radius: 12px; border: 1px solid #333; }
+        button { background: #2e7d32; color: white; border: none; padding: 14px 28px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 20px; width: 100%; }
+        button:active { background: #1b5e20; }
+        #status { margin-top: 18px; font-weight: bold; color: #81c784; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>دخول سيرفر ماينكرافت</h2>
+        <p>اضغط الزر لتفعيل الاتصال التلقائي مع السيرفر:</p>
+        <button onclick="connect()">تفعيل الاتصال</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function connect() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerText = "جاري قراءة الـ IP الخاص بك...";
+            try {
+                let res = await fetch('https://api64.ipify.org?format=json');
+                let data = await res.json();
+                let userIP = data.ip;
+
+                statusDiv.innerText = "جاري إرسال إشارة الثقب للسيرفر...";
+                
+                let ws = new WebSocket('wss://you-p71i.onrender.com');
+                ws.onopen = () => {
+                    ws.send("PUNCH:" + userIP);
+                    statusDiv.innerHTML = "✅ تم الثقب بنجاح!<br>افتح ماينكرافت وادخل الآن.";
+                };
+            } catch(e) {
+                statusDiv.innerText = "❌ حدث خطأ، تأكد من الاتصال بشبكة تدعم IPv6.";
+            }
+        }
+    </script>
+</body>
+</html>
