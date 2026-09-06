@@ -1,32 +1,36 @@
 import asyncio
-from http import HTTPStatus
 import os
 import websockets
 
 SERVER_SOCKET = None
 
 
-async def process_request(path, request_headers):
-    # إذا فتحت الرابط من المتصفح كـ HTTP عادي، اعرض index.html
-    if request_headers.get("Upgrade", "").lower() != "websocket":
+async def process_request(*args, **kwargs):
+    # استخراج الهيدر بنجاح مع جميع إصدارات websockets القديمة والحديثة
+    req = args[1] if len(args) > 1 else args[0]
+    headers = getattr(req, "headers", req)
+
+    upgrade_header = ""
+    if hasattr(headers, "get"):
+        upgrade_header = headers.get("Upgrade", "")
+
+    # إذا كان الطلب فتح صفحة عادي وليس WebSocket
+    if upgrade_header.lower() != "websocket":
         try:
             with open("index.html", "r", encoding="utf-8") as f:
-                body = f.read().encode("utf-8")
+                html_code = f.read()
             return (
-                HTTPStatus.OK,
+                200,
                 [("Content-Type", "text/html; charset=utf-8")],
-                body,
+                html_code.encode("utf-8"),
             )
         except Exception:
-            return (
-                HTTPStatus.NOT_FOUND,
-                [("Content-Type", "text/plain")],
-                b"index.html not found",
-            )
-    return None  # استكمال الاتصال كـ WebSocket
+            return (404, [("Content-Type", "text/plain")], b"index.html not found")
+
+    return None  # السماح بمرور اتصال الـ WebSocket
 
 
-async def handler(websocket, path=None):
+async def handler(websocket, *args):
     global SERVER_SOCKET
     try:
         async for message in websocket:
