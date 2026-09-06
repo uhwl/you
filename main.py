@@ -1,36 +1,29 @@
 import asyncio
 import os
 import websockets
+from websockets.http import Headers
 
 SERVER_SOCKET = None
 
 
-async def process_request(*args, **kwargs):
-    # استخراج الهيدر بنجاح مع جميع إصدارات websockets القديمة والحديثة
-    req = args[1] if len(args) > 1 else args[0]
-    headers = getattr(req, "headers", req)
-
-    upgrade_header = ""
-    if hasattr(headers, "get"):
-        upgrade_header = headers.get("Upgrade", "")
-
-    # إذا كان الطلب فتح صفحة عادي وليس WebSocket
-    if upgrade_header.lower() != "websocket":
+async def process_request(path, request_headers):
+    # إذا كان الطلب فتح صفحة ويب عادية (HTTP) وليس WebSocket
+    if request_headers.get("Upgrade", "").lower() != "websocket":
         try:
-            with open("index.html", "r", encoding="utf-8") as f:
-                html_code = f.read()
-            return (
-                200,
-                [("Content-Type", "text/html; charset=utf-8")],
-                html_code.encode("utf-8"),
-            )
+            with open("index.html", "rb") as f:
+                body = f.read()
+            headers = Headers([("Content-Type", "text/html; charset=utf-8")])
+            # إرجاع الاستجابة بالصيغة الصحيحة للمكتبة (Status Code, Headers, Body)
+            return (200, headers, body)
         except Exception:
-            return (404, [("Content-Type", "text/plain")], b"index.html not found")
+            headers = Headers([("Content-Type", "text/plain")])
+            return (404, headers, b"index.html not found")
 
-    return None  # السماح بمرور اتصال الـ WebSocket
+    # السماح باستكمال اتصال WebSocket
+    return None
 
 
-async def handler(websocket, *args):
+async def handler(websocket):
     global SERVER_SOCKET
     try:
         async for message in websocket:
@@ -48,7 +41,7 @@ async def handler(websocket, *args):
 
 
 async def main():
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 10000))
     async with websockets.serve(
         handler, "0.0.0.0", port, process_request=process_request
     ):
