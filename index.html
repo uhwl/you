@@ -31,18 +31,29 @@
 
                 statusDiv.innerText = "جاري إرسال إشارة الثقب للسيرفر...";
                 
-                let ws = new WebSocket('wss://you-p71i.onrender.com');
+                // تحديد رابط WebSocket ديناميكياً بنفس نطاق Render
+                let protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+                let wsHost = window.location.host ? (protocol + window.location.host) : 'wss://you-p71i.onrender.com';
+                let ws = new WebSocket(wsHost);
+
                 ws.onopen = () => {
                     ws.send("PUNCH:" + userIP);
-                    statusDiv.innerHTML = "✅ تم الثقب بنجاح!<br>افتح ماينكرافت وادخل الآن.";
+                };
+
+                ws.onmessage = (event) => {
+                    if (event.data === "PUNCH_SENT") {
+                        statusDiv.innerHTML = "✅ تم الثقب بنجاح!<br>افتح ماينكرافت وادخل الآن.";
+                        ws.close();
+                    }
+                };
+
+                ws.onerror = () => {
+                    statusDiv.innerText = "❌ فشل الاتصال بسيرفر الإشارة.";
                 };
             } catch(e) {
-                statusDiv.innerText = "❌ حدث خطأ، تأكد من الاتصال بشبكة تدعم IPv6.";
+                statusDiv.innerText = "❌ حدث خطأ أثناء جلب عنوان الـ IP.";
             }
         }
     </script>
 </body>
 </html>
-
-
-
