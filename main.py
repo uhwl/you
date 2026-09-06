@@ -1,53 +1,46 @@
-import asyncio
 import os
-import websockets
-from websockets.http import Headers
+from aiohttp import web
 
 SERVER_SOCKET = None
 
 
-async def process_request(path, request_headers):
-    # إذا كان الطلب فتح صفحة ويب عادية (HTTP) وليس WebSocket
-    if request_headers.get("Upgrade", "").lower() != "websocket":
-        try:
-            with open("index.html", "rb") as f:
-                body = f.read()
-            headers = Headers([("Content-Type", "text/html; charset=utf-8")])
-            # إرجاع الاستجابة بالصيغة الصحيحة للمكتبة (Status Code, Headers, Body)
-            return (200, headers, body)
-        except Exception:
-            headers = Headers([("Content-Type", "text/plain")])
-            return (404, headers, b"index.html not found")
-
-    # السماح باستكمال اتصال WebSocket
-    return None
-
-
-async def handler(websocket):
+async def handle_root(request):
     global SERVER_SOCKET
+
+    # إذا كان الطلب اتصال WebSocket (سواء من T440p أو المتصفح)
+    if request.headers.get("Upgrade", "").lower() == "websocket":
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        try:
+            async for msg in ws:
+                if msg.type == web.WSMsgType.TEXT:
+                    data = msg.data
+                    if data == "REGISTER_T440P":
+                        SERVER_SOCKET = ws
+                        print("[+] T440p Connected!")
+                    elif data.startswith("PUNCH:"):
+                        client_ip = data.split(":")[1]
+                        if SERVER_SOCKET:
+                            await SERVER_SOCKET.send_str(f"{client_ip},19132")
+                            await ws.send_str("PUNCH_SENT")
+                            print(f"[+] Hole punch requested for {client_ip}")
+        except Exception as e:
+            print(f"[-] Connection closed: {e}")
+
+        return ws
+
+    # إذا كان طلب HTTP عادي، يتم عرض الواجهة index.html
     try:
-        async for message in websocket:
-            if message == "REGISTER_T440P":
-                SERVER_SOCKET = websocket
-                print("[+] T440p Connected!")
-            elif message.startswith("PUNCH:"):
-                client_ip = message.split(":")[1]
-                if SERVER_SOCKET:
-                    await SERVER_SOCKET.send(f"{client_ip},19132")
-                    await websocket.send("PUNCH_SENT")
-                    print(f"[+] Hole punch requested for {client_ip}")
+        with open("index.html", "r", encoding="utf-8") as f:
+            return web.Response(text=f.read(), content_type="text/html")
     except Exception:
-        pass
+        return web.Response(text="index.html not found", status=404)
 
 
-async def main():
-    port = int(os.environ.get("PORT", 10000))
-    async with websockets.serve(
-        handler, "0.0.0.0", port, process_request=process_request
-    ):
-        print(f"[*] Server running on port {port}")
-        await asyncio.Future()
-
+app = web.Application()
+app.router.add_route("*", "/{tail:.*}", handle_root)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    port = int(os.environ.get("PORT", 10000))
+    web.run_app(app, host="0.0.0.0", port=port)
