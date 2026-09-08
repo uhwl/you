@@ -49,11 +49,16 @@ async def handle_root(request):
                         target_ip = data.split(":", 1)[1].strip()
 
                         # التحقق من أن الـ IP المرسل هو عنوان IPv6 أو IPv4 صالح
+                        # التحقق من أن الـ IP المرسل هو IPv6 حصراً
                         try:
-                            ipaddress.ip_address(target_ip)
+                            ip_obj = ipaddress.ip_address(target_ip)
+                            if not isinstance(ip_obj, ipaddress.IPv6Address):
+                                await ws.send_str("ERROR: ONLY_IPV6_ALLOWED")
+                                continue
                         except ValueError:
                             await ws.send_str("ERROR: INVALID_IP")
                             continue
+                            
 
                         # توجيه الطلب لـ T440p إذا كان متصلاً
                         if SERVER_SOCKET and not SERVER_SOCKET.closed:
