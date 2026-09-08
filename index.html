@@ -21,7 +21,6 @@
     </div>
 
     <script>
-        // دالة لكشف الـ IPv6 تلقائياً من محرك المتصفح دون الحاجة لمواقع خارجية محجوبة
         function getPublicIPv6() {
             return new Promise((resolve, reject) => {
                 let found = false;
@@ -48,16 +47,6 @@
                     }
                 };
 
-                setTimeout(() => {
-                    if (!found) {
-                        pc.close();
-                        reject("Timeout");
-                    }
-                }, 4000);
-            });
-        }
-
-                // مهلة 4 ثوانٍ كحد أقصى للبحث
                 setTimeout(() => {
                     if (!found) {
                         pc.close();
