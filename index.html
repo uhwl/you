@@ -26,7 +26,11 @@
             return new Promise((resolve, reject) => {
                 let found = false;
                 const pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun.cloudflare.com:3478' }
+                    ]
                 });
                 
                 pc.createDataChannel("");
@@ -37,13 +41,21 @@
                     const parts = event.candidate.candidate.split(' ');
                     const ip = parts[4];
 
-                    // التأكد أنه عنوان IPv6 حقيقي وليس عنوان محلي يبدأ بـ fe80
                     if (ip && ip.includes(':') && !ip.startsWith('fe80') && !found) {
                         found = true;
                         resolve(ip);
                         pc.close();
                     }
                 };
+
+                setTimeout(() => {
+                    if (!found) {
+                        pc.close();
+                        reject("Timeout");
+                    }
+                }, 4000);
+            });
+        }
 
                 // مهلة 4 ثوانٍ كحد أقصى للبحث
                 setTimeout(() => {
