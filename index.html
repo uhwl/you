@@ -23,15 +23,17 @@
     <script>
         async function connect() {
             const statusDiv = document.getElementById('status');
-            statusDiv.innerText = "جاري قراءة الـ IP الخاص بك...";
+            statusDiv.style.color = "#81c784";
+            statusDiv.innerText = "جاري قراءة عنوان IPv6 الخاص بك...";
+            
             try {
-                let res = await fetch('https://api64.ipify.org?format=json');
+                // جلب IPv6 حصراً باستخدام api6 بدلاً من api64
+                let res = await fetch('https://api6.ipify.org?format=json');
                 let data = await res.json();
                 let userIP = data.ip;
 
                 statusDiv.innerText = "جاري إرسال إشارة الثقب للسيرفر...";
                 
-                // تحديد رابط WebSocket ديناميكياً بنفس نطاق Render
                 let protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
                 let wsHost = window.location.host ? (protocol + window.location.host) : 'wss://you-p71i.onrender.com';
                 let ws = new WebSocket(wsHost);
@@ -41,17 +43,32 @@
                 };
 
                 ws.onmessage = (event) => {
-                    if (event.data === "PUNCH_SENT") {
+                    let msg = event.data;
+                    if (msg === "PUNCH_SENT") {
                         statusDiv.innerHTML = "✅ تم الثقب بنجاح!<br>افتح ماينكرافت وادخل الآن.";
                         ws.close();
+                    } else if (msg === "ERROR: ONLY_IPV6_ALLOWED") {
+                        statusDiv.style.color = "#e57373";
+                        statusDiv.innerText = "❌ عذراً، الاتصال متاح فقط لعناوين IPv6.";
+                    } else if (msg === "ERROR: SERVER_NOT_CONNECTED") {
+                        statusDiv.style.color = "#e57373";
+                        statusDiv.innerText = "❌ سيرفر ماينكرافت (T440p) غير متصل حالياً.";
+                    } else if (msg === "ERROR: RATE_LIMIT_EXCEEDED") {
+                        statusDiv.style.color = "#ffb74d";
+                        statusDiv.innerText = "⚠️ انتظر 5 ثوانٍ قبل المحاولة مرة أخرى.";
+                    } else {
+                        statusDiv.style.color = "#e57373";
+                        statusDiv.innerText = "❌ خطأ: " + msg;
                     }
                 };
 
                 ws.onerror = () => {
+                    statusDiv.style.color = "#e57373";
                     statusDiv.innerText = "❌ فشل الاتصال بسيرفر الإشارة.";
                 };
             } catch(e) {
-                statusDiv.innerText = "❌ حدث خطأ أثناء جلب عنوان الـ IP.";
+                statusDiv.style.color = "#e57373";
+                statusDiv.innerText = "❌ اتصالك لا يدعم IPv6 أو تعذر جلبه!";
             }
         }
     </script>
